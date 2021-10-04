@@ -1,25 +1,23 @@
 CREATE TABLE t_Lukas_Slatinsky_projekt_SQL_final AS 
 WITH 
--- základní tabulka covid19_basic_differences
+-- zÃ¡kladnÃ­ tabulka covid19_basic_differences
 	base AS (
 		SELECT 
 			`date` ,
 			country ,
 			confirmed ,
-			-- binární promìnná pro víkend/všední den (1/0)
+			-- binÃ¡rnÃ­ promÄ›nnÃ¡ pro vÃ­kend/vÅ¡ednÃ­ den (1/0)
 			CASE 
 				WHEN WEEKDAY(`date`) IN (5, 6) THEN 1 
 				ELSE 0 
-			END AS 'weekend' ,
-			-- roèní období daného dne (jaro = 0)
+			END AS weekend ,
+			-- roÄnÃ­ obdobÃ­ danÃ©ho dne (jaro = 0)
 			CASE 
-				WHEN `date` BETWEEN '2019-12-21' AND '2020-03-19' THEN 3
-				WHEN `date` BETWEEN '2020-03-20' AND '2020-06-19' THEN 0
-				WHEN `date` BETWEEN '2020-06-20' AND '2020-09-21' THEN 1
-				WHEN `date` BETWEEN '2020-09-22' AND '2020-12-20' THEN 2
-				WHEN `date` BETWEEN '2020-12-21' AND '2021-03-19' THEN 3
-				WHEN `date` BETWEEN '2021-03-20' AND '2021-06-20' THEN 0
-			END AS 'season' 
+				WHEN MONTH(`date`) BETWEEN 1 AND 3 THEN 0
+				WHEN MONTH(`date`) BETWEEN 4 AND 6 THEN 1
+				WHEN MONTH(`date`) BETWEEN 7 AND 9 THEN 2
+				WHEN MONTH(`date`) BETWEEN 10 AND 12 THEN 3
+			END AS season 
 		FROM covid19_basic_differences 
 ), iso AS (
 		SELECT 
@@ -30,7 +28,7 @@ WITH
 		LEFT JOIN countries c2 
 		  ON lt2.iso3 = c2.iso3
 		WHERE lt2.province IS NULL 
--- údaje o populaci obyvatel
+-- Ãºdaje o populaci obyvatel
 ), pop AS (
 		SELECT 
 			country ,
@@ -38,7 +36,7 @@ WITH
 			population 
 		FROM lookup_table
 		WHERE province IS NULL 
--- poslední dostupnı gini koeficient 
+-- poslednÃ­ dostupnÃ½ gini koeficient 
 ), a_gini AS (
 	 SELECT
 	 	country ,
@@ -47,7 +45,7 @@ WITH
 	 FROM economies
 	 WHERE gini IS NOT NULL 
 	 GROUP BY country 
--- poslední dostupná dìtská úmrtnost
+-- poslednÃ­ dostupnÃ¡ dÄ›tskÃ¡ Ãºmrtnost
 ), mort AS (
 	SELECT 
 		country ,
@@ -56,14 +54,14 @@ WITH
 	FROM economies
 	WHERE mortaliy_under5 IS NOT NULL 
 	GROUP BY country
--- gdp na obyvatele v roce 2020 (data pro rok 2021 nejsou dostupná)
+-- gdp na obyvatele v roce 2020 (data pro rok 2021 nejsou dostupnÃ¡)
 ), gdpc AS (
 	SELECT
 		country ,
 		ROUND( GDP / population , 2 ) AS GDP_per_cap 
 	FROM economies
 	WHERE `year` = 2020
--- rozdíl oèekávané doby doití 1965 - 2015
+-- rozdÃ­l oÄekÃ¡vanÃ© doby doÅ¾itÃ­ 1965 - 2015
 ), le_diff AS (
 	SELECT 
 		le.country ,
@@ -91,7 +89,7 @@ WITH
 		WHERE `year` = 2015
 	) le2
 	        ON le.country = le2.country
--- podíly jednotlivıch náboenství
+-- podÃ­ly jednotlivÃ½ch nÃ¡boÅ¾enstvÃ­
 ), rel_perc AS (
 	SELECT
 		rel.country ,
@@ -100,7 +98,7 @@ WITH
 		rel.population AS rel_pop ,
 		pop.population AS total_pop
 	FROM (
-	-- vıbìr státù a jejich náboenství s poètem vìøících v roce 2020 (rok 2021 v tabulce není)
+	-- vÃ½bÄ›r stÃ¡tÅ¯ a jejich nÃ¡boÅ¾enstvÃ­ s poÄtem vÄ›Å™Ã­cÃ­ch v roce 2020 (rok 2021 v tabulce nenÃ­)
 		SELECT
 			r.religion ,
 			r.population ,
@@ -110,7 +108,7 @@ WITH
 		  ON iso.country2 = country
 		WHERE r.`year` = 2020
 	) rel
-	-- pøipojení dat o celkové populaci v daném státì
+	-- pÅ™ipojenÃ­ dat o celkovÃ© populaci v danÃ©m stÃ¡tÄ›
 	LEFT JOIN (
 		SELECT 
 			country ,
@@ -119,20 +117,20 @@ WITH
 		WHERE province IS NULL 
 	) pop
 	  ON rel.country = pop.country 
--- prùmìrná denní teplota
+-- prÅ¯mÄ›rnÃ¡ dennÃ­ teplota
 ), avg_tmp AS (
 	SELECT
 	  `date` ,
 	  city ,
-	  ROUND(AVG(CAST(TRIM(REPLACE(temp, '°c', '')) AS FLOAT)) , 2) AS avg_temp
+	  ROUND(AVG(CAST(TRIM(REPLACE(temp, ' Â°c', '')) AS FLOAT)) , 2) AS avg_temp
 	FROM weather w 
--- Chybí údaje o pøesném èasu západu a vıchodu slunce pro jednotlivé zemì a dny.
--- Pøesné èasy, které by urèovaly prùmìrnı západ a vıchod slunce se mi nepodaøilo najít.
--- Tudí jako rozmezí dne byl pro zjednodušení zvolen èas 6:00 - 18:00.
+-- ChybÃ­ Ãºdaje o pÅ™esnÃ©m Äasu zÃ¡padu a vÃ½chodu slunce pro jednotlivÃ© zemÄ› a dny.
+-- PÅ™esnÃ© Äasy, kterÃ© by urÄovaly prÅ¯mÄ›rnÃ½ zÃ¡pad a vÃ½chod slunce se mi nepodaÅ™ilo najÃ­t.
+-- TudÃ­Å¾ jako rozmezÃ­ dne byl pro zjednoduÅ¡enÃ­ zvolen Äas 6:00 - 18:00.
 	WHERE `time` BETWEEN '06:00' AND '18:00'
 	  AND city IS NOT NULL 
 	GROUP BY `date` , city 
--- poèet hodin v daném dni, kdy byly sráky nenulové
+-- poÄet hodin v danÃ©m dni, kdy byly srÃ¡Å¾ky nenulovÃ©
 ), hrs_rain AS (
 	SELECT 
 		date ,
@@ -150,7 +148,7 @@ WITH
 		WHERE city IS NOT NULL 
 	) trn 
 	GROUP BY `date` , city 	
--- maximální síla vìtru v nárazech bìhem dne
+-- maximÃ¡lnÃ­ sÃ­la vÄ›tru v nÃ¡razech bÄ›hem dne
 ), max_gst AS (
 	SELECT 
 		`date` ,
@@ -159,7 +157,7 @@ WITH
 	FROM weather w2 
 	WHERE city IS NOT NULL 
 	GROUP BY `date` , city
--- life_expectancy, mìsto, median_age pro rok 2018, pøedpokládaná délka doití, hustota obyvatel
+-- life_expectancy, mÄ›sto, median_age pro rok 2018, pÅ™edpoklÃ¡danÃ¡ dÃ©lka doÅ¾itÃ­, hustota obyvatel
 ), countr AS (
 	SELECT 
 		country ,
@@ -181,7 +179,7 @@ WITH
 		median_age_2018 ,
 		iso3 
 	FROM countries
--- testování - poèet testù/den + typ testu
+-- testovÃ¡nÃ­ - poÄet testÅ¯/den + typ testu
 ), tests AS (
 	SELECT 
 		`date` ,
@@ -189,7 +187,7 @@ WITH
 		entity ,
 		tests_performed 
 	FROM covid19_tests 
--- prùmìrná vlhkost vzduchu
+-- prÅ¯mÄ›rnÃ¡ vlhkost vzduchu
 ), humid AS (
 	SELECT 
 		`date` ,
@@ -199,7 +197,7 @@ WITH
 	WHERE city IS NOT NULL 
 	GROUP BY `date` , city 
 )
--- vıslednı select
+-- vÃ½slednÃ½ select
 SELECT 
 	base.`date` ,
 	base.country ,
@@ -221,51 +219,51 @@ SELECT
 	le_diff.life_expectancy_difference ,
  	rel_perc.religion ,
  	rel_perc.believer_percentage ,
-	avg_tmp.avg_temp , 					-- v °C
+	avg_tmp.avg_temp , 					-- v Â°C
 	max_gst.gust AS max_gust , 			-- v km/h
 	hrs_rain.hr_rain AS hours_rain ,
 	humid.humidity						-- v %
 FROM base
 LEFT JOIN iso
   ON iso.country1 = base.country
--- pøipojení údajù o testování 
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o testovÃ¡nÃ­ 
 LEFT JOIN tests 
   ON tests.country = iso.country1 
  AND tests.`date`  = base.`date` 
--- pøipojení údajù o poètu obyvatel
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o poÄtu obyvatel
 LEFT JOIN pop
   ON pop.country = iso.country1 
--- pøipojení tabulky countries
+-- pÅ™ipojenÃ­ tabulky countries
 LEFT JOIN countr c
    ON c.iso3 = iso.iso3
--- pøipojení údajù o GDP
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o GDP
 LEFT JOIN gdpc
   ON gdpc.country = iso.country2
--- pøipojení údajù o gini
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o gini
 LEFT JOIN a_gini
   ON a_gini.country = iso.country2
--- pøipojení údajù o dìtské úmrtnosti
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o dÄ›tskÃ© Ãºmrtnosti
 LEFT JOIN mort
   ON mort.country = iso.country2
--- pøipojení údajù o life expectancy v roce 1965 a 2015
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o life expectancy v roce 1965 a 2015
 LEFT JOIN le_diff
   ON le_diff.iso3 = iso.iso3 
--- pøipojení údajù o procentuálním poètu vìøících
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o procentuÃ¡lnÃ­m poÄtu vÄ›Å™Ã­cÃ­ch
 LEFT JOIN rel_perc
   ON rel_perc.country = iso.country1
--- pøipojení údajù o prùmìrné denní teplotì
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o prÅ¯mÄ›rnÃ© dennÃ­ teplotÄ›
 LEFT JOIN avg_tmp
   ON avg_tmp.`date` = base.`date`
  AND avg_tmp.city = capital_city 
--- pøipojení údajù o maximální rychlosti nárazového vìtru
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o maximÃ¡lnÃ­ rychlosti nÃ¡razovÃ©ho vÄ›tru
 LEFT JOIN max_gst
   ON max_gst.`date` = base.`date`
  AND max_gst.city = capital_city 
--- pøipojení údajù o dobì, kdy byly sráky nenulové
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o dobÄ›, kdy byly srÃ¡Å¾ky nenulovÃ©
 LEFT JOIN hrs_rain
   ON hrs_rain.`date` = base.`date`
  AND hrs_rain.city = capital_city 
--- pøipojení údajù o prùmìrné vlhkosti vzduchu
+-- pÅ™ipojenÃ­ ÃºdajÅ¯ o prÅ¯mÄ›rnÃ© vlhkosti vzduchu
 LEFT JOIN humid
   ON humid.`date` = base.`date`
  AND humid.city = capital_city 
