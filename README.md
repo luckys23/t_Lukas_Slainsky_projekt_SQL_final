@@ -1,1 +1,4 @@
-# t_Lukas_Slatinsky_projekt_SQL_final
+<!-- O PROJEKTU -->
+## O projektu
+
+Tento projekt byl vytvořen jako závěrečný pro SQL část Engeto datové akademie. 
